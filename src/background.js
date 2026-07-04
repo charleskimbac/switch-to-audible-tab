@@ -58,14 +58,14 @@ const removeMarkedTab = tab => {
 };
 
 const updateIcon = isChecked => {
-    browser.browserAction.setIcon({
+    chrome.browserAction.setIcon({
         path: isChecked ? 'img/icon-checked.png' : 'img/128.png'
     });
 };
 
 /** Returns active tab in the current window. */
 const getActiveTab = async () => {
-    return browser.tabs.query({ active: true, currentWindow: true })
+    return chrome.tabs.query({ active: true, currentWindow: true })
         .then(x => x[0]);
 };
 
@@ -90,7 +90,7 @@ const runSettingsMigrations = settings => {
 
 /** Returns settings object */
 const loadSettings = catcher(async () => {
-    const r = await browser.storage.local.get({
+    const r = await chrome.storage.local.get({
         settings: defaults
     });
 
@@ -100,7 +100,7 @@ const loadSettings = catcher(async () => {
     return r.settings;
 });
 
-browser.storage.onChanged.addListener((changes, area) => {
+chrome.storage.onChanged.addListener((changes, area) => {
     if (typeof changes.settings === 'object') {
         settings = changes.settings.newValue;
         updateMenuContexts(settings);
@@ -158,14 +158,14 @@ const nextTab = (tabs, activeTab) => {
     return FromStart;
 };
 
-browser.contextMenus.create({
+chrome.contextMenus.create({
     id: MARK_MENU_ID,
     type: "checkbox",
     title: "Mark this tab as audible",
     contexts: ["browser_action"],
 });
 
-browser.contextMenus.create({
+chrome.contextMenus.create({
     id: SETTINGS_MENU_ID,
     title: "Open Preferences",
     contexts: ["browser_action"],
@@ -177,7 +177,7 @@ const updateMenuContexts = catcher(async settings => {
     if (settings.menuOnTab && !isGoogle) {
         contexts.push("tab");
     }
-    await browser.contextMenus.update(MARK_MENU_ID, {
+    await chrome.contextMenus.update(MARK_MENU_ID, {
         contexts
     });
 });
@@ -187,7 +187,7 @@ loadSettings().then(updateMenuContexts);
 getActiveTab().then(tab => firstActive = tab);
 
 // When some tab gets removed, check if we are referencing it.
-browser.tabs.onRemoved.addListener(tabId => {
+chrome.tabs.onRemoved.addListener(tabId => {
     if (firstActive.id === tabId) {
         firstActive = null;
     }
@@ -197,16 +197,16 @@ browser.tabs.onRemoved.addListener(tabId => {
 
 // Track the last active tab which was activated by the user or another
 // extension
-browser.tabs.onActivated.addListener(async ({ tabId, windowId }) => {
+chrome.tabs.onActivated.addListener(async ({ tabId, windowId }) => {
     const checked = marked.some(mkd => mkd.id === tabId);
     // no need to await
-    browser.contextMenus.update(MARK_MENU_ID, { checked });
+    chrome.contextMenus.update(MARK_MENU_ID, { checked });
     updateIcon(checked);
 
     if (waitingForActivation) {
         waitingForActivation = false;
     } else {
-        const index = (await browser.tabs.query({}).then(r => r.find(r => r.id == tabId))).index;
+        const index = (await chrome.tabs.query({}).then(r => r.find(r => r.id == tabId))).index;
 
         // This tab was activated by the user or another extension,
         // therefore we need to set it as firstActive.
@@ -214,7 +214,7 @@ browser.tabs.onActivated.addListener(async ({ tabId, windowId }) => {
     }
 });
 
-browser.windows.onFocusChanged.addListener(catcher(async (windowId) => {
+chrome.windows.onFocusChanged.addListener(catcher(async (windowId) => {
     const activeTab = await getActiveTab();
     const checked = marked.some(mkd => mkd.id === activeTab.id);
     updateIcon(checked);
@@ -223,7 +223,7 @@ browser.windows.onFocusChanged.addListener(catcher(async (windowId) => {
     }
 }));
 
-browser.browserAction.onClicked.addListener(catcher(async () => {
+chrome.browserAction.onClicked.addListener(catcher(async () => {
     // Choose how to switch to the tab, depending on `settings.allWindows`.
     // Maintain waitingForActivation flag.
     const switchTo = async (tab, activeTab) => {
@@ -233,10 +233,10 @@ browser.browserAction.onClicked.addListener(catcher(async () => {
 
         waitingForActivation = true;
 
-        await browser.tabs.update(tab.id, { active: true });
+        await chrome.tabs.update(tab.id, { active: true });
 
         if (settings.allWindows) {
-            await browser.windows.update(tab.windowId, { focused: true });
+            await chrome.windows.update(tab.windowId, { focused: true });
         }
 
         if (!settings.includeFirst) {
@@ -258,12 +258,12 @@ browser.browserAction.onClicked.addListener(catcher(async () => {
         return query;
     };
 
-    tabs = [...tabs, ...await browser.tabs.query(refine({ audible: true }))];
+    tabs = [...tabs, ...await chrome.tabs.query(refine({ audible: true }))];
 
     const areReallyAudible = tabs.length != 0;
 
     if (settings.includeMuted)
-        tabs = [...tabs, ...await browser.tabs.query(refine({ muted: true }))];
+        tabs = [...tabs, ...await chrome.tabs.query(refine({ muted: true }))];
 
     if (marked.length)
         tabs = [...tabs, ...marked];
@@ -281,7 +281,7 @@ browser.browserAction.onClicked.addListener(catcher(async () => {
         );
 
         if (permanentlyMarked.length)
-            tabs = [...tabs, ...await browser.tabs.query(refine({ url: permanentlyMarked }))];
+            tabs = [...tabs, ...await chrome.tabs.query(refine({ url: permanentlyMarked }))];
     }
 
     if (settings.followNotifications) {
@@ -342,7 +342,7 @@ browser.browserAction.onClicked.addListener(catcher(async () => {
 
 
 // WONTFIX: api is not supported, but also we can't use tabs context menus.
-!isGoogle && browser.contextMenus.onShown.addListener(async function(info, tab) {
+!isGoogle && chrome.contextMenus.onShown.addListener(async function(info, tab) {
     if (info.menuIds.includes(MARK_MENU_ID)) {
         let checked = false;
 
@@ -354,16 +354,16 @@ browser.browserAction.onClicked.addListener(catcher(async () => {
             checked = marked.some(mkd => mkd.id === activeTab.id);
         }
 
-        await browser.contextMenus.update(MARK_MENU_ID, { checked });
-        await browser.contextMenus.refresh();
+        await chrome.contextMenus.update(MARK_MENU_ID, { checked });
+        await chrome.contextMenus.refresh();
     }
 });
 
-browser.contextMenus.onClicked.addListener(async function(info, tab) {
+chrome.contextMenus.onClicked.addListener(async function(info, tab) {
 
     const activeTab = await getActiveTab();
     if (info.menuItemId === SETTINGS_MENU_ID) {
-        browser.runtime.openOptionsPage();
+        chrome.runtime.openOptionsPage();
     } else if (info.menuItemId === MARK_MENU_ID) {
         if (info.checked) {
             addMarkedTab(tab);
@@ -377,7 +377,7 @@ browser.contextMenus.onClicked.addListener(async function(info, tab) {
     }
 });
 
-browser.tabs.onUpdated.addListener(catcher(async (tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener(catcher(async (tabId, changeInfo, tab) => {
     if (typeof changeInfo.audible == 'boolean') {
         if (changeInfo.audible) {
             if ((await getActiveTab()).id != tabId) {
@@ -399,8 +399,8 @@ browser.tabs.onUpdated.addListener(catcher(async (tabId, changeInfo, tab) => {
     }
 }));
 
-browser.runtime.onInstalled.addListener(details => {
+chrome.runtime.onInstalled.addListener(details => {
     if (details.reason == "install") {
-        browser.runtime.openOptionsPage();
+        chrome.runtime.openOptionsPage();
     }
 });

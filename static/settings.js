@@ -9427,13 +9427,13 @@ var PS = {};
 
   exports.save_ = function (settings) {
       return function () {
-          return browser.storage.local.set({ settings: settings });
+          return chrome.storage.local.set({ settings: settings });
       };
   };
 
   exports.load_ = function (defaults) {
       return function () {
-          return browser.storage.local.get({ settings: defaults }).then(function (res) {
+          return chrome.storage.local.get({ settings: defaults }).then(function (res) {
               return res.settings;
           });
       };
@@ -9477,7 +9477,7 @@ var PS = {};
   };
 
   exports.openHotkeySettings = function () {
-      browser.tabs.create({url: 'chrome://extensions/shortcuts'});
+      chrome.tabs.create({url: 'chrome://extensions/shortcuts'});
   };
 })(PS["SettingsFFI"] = PS["SettingsFFI"] || {});
 (function($PS) {
