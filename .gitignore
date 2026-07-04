@@ -12,5 +12,4 @@
 /.spago/
 /.cache/
 package-lock.json
-static/settings.js
 /dist/
